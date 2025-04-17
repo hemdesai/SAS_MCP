@@ -1,4 +1,4 @@
-from typing import Optional, Any
+rom typing import Optional, Any
 from mcp_sasviya.schemas import (
     RunRequest, RunResponse, StatusResponse, ResultsResponse,
     CancelRequest, CancelResponse, HealthResponse
@@ -61,17 +61,15 @@ def run_code(request: RunRequest) -> RunResponse:
         session_id = session_resp.json()["id"]
         # Submit the job with correct Content-Type for SAS Compute API
         job_url = f"{sas_server}/compute/sessions/{session_id}/jobs"
-        job_headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/vnd.sas.compute.job.request+json"}
-        # Use correct SAS Compute API job payload structure
+        job_headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+        # Use flat job payload matching working test script
+        code_lines = request.code.split("\n") if isinstance(request.code, str) else request.code
         job_payload = {
-            "data": [
-                {
-                    "attributes": {
-                        "code": request.code
-                    },
-                    "type": "job"
-                }
-            ]
+            "version": 1,
+            "name": "MCP",
+            "description": "Submitting code from MCP",
+            "code": code_lines,
+            "attributes": {"resetLogLineNumbers": True}
         }
         job_resp = requests.post(job_url, headers=job_headers, json=job_payload, verify=False)
         if job_resp.status_code != 201:
@@ -80,9 +78,10 @@ def run_code(request: RunRequest) -> RunResponse:
                 job_id=None, session_id=session_id, state="failed", condition_code=-1,
                 log="", listing="", data=None, message=f"Failed to submit job: {job_resp.text}", error=job_resp.text
             )
-        job_id = job_resp.json()["id"]
-        state = job_resp.json().get("state", "submitted")
-        condition_code = job_resp.json().get("conditionCode", 0)
+        resp_json = job_resp.json()
+        job_id = resp_json.get("id")
+        state = resp_json.get("state", "submitted")
+        condition_code = resp_json.get("conditionCode", 0)
         log = ""
         listing = ""
         data = None
