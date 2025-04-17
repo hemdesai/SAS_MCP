@@ -52,10 +52,9 @@ class ResultsResponse(BaseModel):
     log: Optional[str] = Field(None, description="SAS log output")
     listing: Optional[str] = Field(None, description="SAS listing output")
     data: Optional[Any] = Field(None, description="Result data (tables, etc.)")
+    answer: Optional[str] = Field(None, description="Extracted value from log, if any")
     message: Optional[str] = Field(None, description="Message or status")
     error: Optional[str] = Field(None, description="Error code if failed")
-
-# --- /cancel Endpoint ---
 
 class CancelRequest(BaseModel):
     job_id: str = Field(..., description="Job identifier to cancel")
