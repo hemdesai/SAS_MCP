@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 from typing import Optional, Any, List, Dict
+=======
+rom typing import Optional, Any
+>>>>>>> cb80fd6d7cbf83f2e22b576ca5d5ef941391dd70
 from mcp_sasviya.schemas import (
     RunRequest, RunResponse, StatusResponse, ResultsResponse,
     CancelRequest, CancelResponse, HealthResponse, TableRequest, TableResponse
@@ -35,6 +39,7 @@ def run_code(request: RunRequest) -> RunResponse:
             return RunResponse(job_id=None, session_id=None, state='failed', condition_code=-1, log='', listing='', data=None, message='Failed create session', error=r2.text)
         session_id = r2.json().get('id')
         job_url = f"{sas_server}/compute/sessions/{session_id}/jobs"
+<<<<<<< HEAD
         job_hdr = {'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'}
         codes = request.code.split('\n') if isinstance(request.code, str) else request.code
         job_pl = {
@@ -48,6 +53,34 @@ def run_code(request: RunRequest) -> RunResponse:
         if r3.status_code != 201:
             return RunResponse(job_id=None, session_id=session_id, state='failed', condition_code=-1, log='', listing='', data=None, message=f'Submission error: {r3.text}', error=r3.text)
         res = r3.json()
+=======
+        job_headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+        # Use flat job payload matching working test script
+        code_lines = request.code.split("\n") if isinstance(request.code, str) else request.code
+        job_payload = {
+            "version": 1,
+            "name": "MCP",
+            "description": "Submitting code from MCP",
+            "code": code_lines,
+            "attributes": {"resetLogLineNumbers": True}
+        }
+        job_resp = requests.post(job_url, headers=job_headers, json=job_payload, verify=False)
+        if job_resp.status_code != 201:
+            logging.error(f"SAS Viya job submission failed: {job_resp.status_code} {job_resp.text}")
+            return RunResponse(
+                job_id=None, session_id=session_id, state="failed", condition_code=-1,
+                log="", listing="", data=None, message=f"Failed to submit job: {job_resp.text}", error=job_resp.text
+            )
+        resp_json = job_resp.json()
+        job_id = resp_json.get("id")
+        state = resp_json.get("state", "submitted")
+        condition_code = resp_json.get("conditionCode", 0)
+        log = ""
+        listing = ""
+        data = None
+        message = "Job submitted successfully."
+        error = None
+>>>>>>> cb80fd6d7cbf83f2e22b576ca5d5ef941391dd70
         return RunResponse(
             job_id=res.get('id'),
             session_id=session_id,
@@ -292,6 +325,7 @@ def get_table(session_id: str, library: str, table_name: str) -> Dict[str, Any]:
     """
     Enhanced table fetch: returns columns and rows in a user-friendly JSON format.
     """
+<<<<<<< HEAD
     import requests, os
     try:
         with open(os.path.join(os.path.dirname(__file__), '..', 'access_token.txt'), 'r') as f:
@@ -337,3 +371,20 @@ def get_table(session_id: str, library: str, table_name: str) -> Dict[str, Any]:
             "message": str(e),
             "error": "mcp.table.error"
         }
+=======
+    import requests
+    import os
+    # Read access token and server URL (reuse logic from run_code)
+    with open(os.path.join(os.path.dirname(__file__), '..', 'access_token.txt'), 'r') as f:
+        access_token = f.read().strip()
+    with open(os.path.join(os.path.dirname(__file__), '..', 'access_server.txt'), 'r') as f:
+        sas_server = f.read().strip()
+    # Construct the endpoint URL
+    url = f"{sas_server}/compute/sessions/{session_id}/data/{library}/{table_name}/rows?limit=100000"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    resp = requests.get(url, headers=headers, verify=False)
+    if resp.status_code == 200:
+        return resp.json()
+    else:
+        raise Exception(f"Failed to fetch table: {resp.status_code} {resp.text}")
+>>>>>>> cb80fd6d7cbf83f2e22b576ca5d5ef941391dd70
