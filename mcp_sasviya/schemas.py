@@ -93,3 +93,9 @@ class TableResponse(BaseModel):
     rows: List[List[Any]] = Field(..., description="Row data for the table")
     message: Optional[str] = Field(None, description="Status or error message")
     error: Optional[str] = Field(None, description="Error details, if any")
+
+class ContextResponse(BaseModel):
+    session_id: str = Field(..., description="SAS Compute session ID")
+    history: Optional[List[Dict[str, Any]]] = Field(default=None, description="List of all operations and results for this session")
+    variables: Optional[Dict[str, Any]] = Field(default=None, description="Named variables/results for this session")
+    last_result: Optional[Any] = Field(default=None, description="Last result fetched for this session")

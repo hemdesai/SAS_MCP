@@ -22,13 +22,20 @@ This repository delivers a production-ready, MCP-compliant SAS Viya server that 
 ---
 
 ## How to Use (MCP Inspector or LLM/Agent)
-1. **Start the MCP server**:
+1. From the `SAS_MCP` directory, set your Python path:
    ```sh
-   python mcp_sasviya/mcp_server.py
+   $Env:PYTHONPATH = $PWD
    ```
-2. **Open [MCP Inspector](https://inspector.modelcontext.org/) or connect your LLM/agent.**
-3. **Choose STDIO as transport.**
-4. **List and call tools** (e.g., `run`, `status`, `results`, `table`, `health`).
+2. Start the MCP server:
+   ```sh
+   mcp dev mcp_sasviya\mcp_server.py
+   ```
+3. Open [MCP Inspector](https://inspector.modelcontext.org/) in your browser.
+4. At the prompt, enter: `mcp`
+5. Use arguments: `run mcp_sasviya/mcp_server.py`
+6. Ensure `PYTHONPATH` is set if needed.
+7. In the Inspector UI, go to **Tools** → **List Tools**.
+8. Click **Run** to execute SAS code via the `run` tool or explore other available tools (`status`, `results`, `table`, `health`).
 
 ---
 
@@ -105,17 +112,19 @@ python mcp_sasviya/mcp_server.py
 
 ---
 
-## MCP Inspector Quickstart
-1. Start the server: `python mcp_sasviya/mcp_server.py`
-2. Open MCP Inspector in your browser.
-3. Set `Transport Type` to STDIO.
-4. Command: `mcp`
-5. Arguments: `run mcp_sasviya/mcp_server.py`
-6. List tools, call `run`, `status`, `results`, `table`, etc.
+## Instructions for Using MCP Inspector (VS Code + Browser)
+1) Run from `SAS_MCP` directory: `$Env:PYTHONPATH = $PWD`
+2) Start the server: `mcp dev mcp_sasviya\mcp_server.py`
+3) Open [MCP Inspector](https://inspector.modelcontext.org/) in your browser.
+4) At the prompt, enter: `mcp`
+5) Use arguments: `run mcp_sasviya/mcp_server.py`
+6) Ensure `PYTHONPATH` is set to your project root if needed.
+7) In the Inspector UI, go to **Tools** → **List Tools**.
+8) Click **Run** to invoke the `run` tool and start executing SAS code.
 
 ---
 
-## Roadmap
+## Areas for Future Development
 - **Persistent storage** (future)
 - **Advanced logging/metrics** (future)
 - **Natural language/LLM agent integration** (future)
@@ -172,276 +181,28 @@ run;
 
 ---
 
-## Tools & Functionality
-
-| Functionality           | Endpoint   | What It Does                                         | Status                |
-|------------------------|------------|------------------------------------------------------|-----------------------|
-| **Run SAS Code**       | `/run`     | Submit SAS code for execution and get a job ID        | ✅ Ready              |
-| **Check Job Status**   | `/status`  | Get the current state of a submitted SAS job          | ✅ Ready              |
-| **Fetch Table**        | `/table`   | Retrieve any output table by name                     | ✅ Ready              |
-| **Cancel a Job**       | `/cancel`  | Stop a SAS job that is currently executing            | ✅ Ready              |
-| **Health Check**       | `/health`  | Confirm the MCP server is running                     | ✅ Ready              |
-| **Inspector UI**       | `/`        | Interactive UI for code submission and results display | ✅ Ready              |
+## MCP Inspector Quickstart
+1. Start the server: `python mcp_sasviya/mcp_server.py`
+2. Open MCP Inspector in your browser.
+3. Set `Transport Type` to STDIO.
+4. Command: `mcp`
+5. Arguments: `run mcp_sasviya/mcp_server.py`
+6. List tools, call `run`, `status`, `results`, `table`, etc.
 
 ---
 
-## Usage
-
-### 1. Start the MCP Server
-```sh
-$Env:PYTHONPATH = $PWD
-mcp dev mcp_sasviya\mcp_server.py
-```
-
-### 2. Connect via MCP Inspector
-- Open MCP Inspector in your browser.
-- Use the command: `mcp`
-- Arguments: `run mcp_sasviya/mcp_server.py`
-- Set environment variables as needed (e.g., `PYTHONPATH`).
-
-### 3. Submit SAS Code
-- Use the `run` tool with JSON input:
-  ```json
-  {
-    "code": "data work.results1; ... run; proc means data=work.results1 ... output out=work.results2; run;"
-  }
-  ```
-
-### 4. Retrieve Results
-- Use the `table` tool with:
-  - `session_id`: (from run tool result)
-  - `library`: `work`
-  - `table_name`: `results1`, `results2`, etc.
-
----
-
-## Limitations
-
-- Only tables (datasets) in the specified session/library are accessible.
-- No support for direct ODS/listing/log output retrieval.
-- Session cleanup and resource management are manual (unless automated in your workflow).
-
----
-
-## Developer Notes
-
-- Tools are registered using the MCP protocol, following the same conventions as the GitHub MCP server.
-- All request/response schemas are defined in `mcp_sasviya/schemas.py` using Pydantic.
-- The server is compatible with FastAPI and can be deployed as a container or on Kubernetes.
-- Error handling and logging are implemented throughout for reliability.
-
----
-
-## Troubleshooting
-
-- If you see validation errors, ensure your JSON input is correctly formatted.
-- If table output is truncated, increase the SAS variable length in your code.
-- If you cannot fetch a table, make sure it was created in the same session and not deleted.
-
----
-
-## Contributing
-
-- Fork the repo and submit PRs for enhancements or bugfixes.
-- Follow the existing schema and tool registration patterns.
-- Keep the README updated with any new features or changes.
+## Roadmap
+- **Persistent storage** (future)
+- **Advanced logging/metrics** (future)
+- **Natural language/LLM agent integration** (future)
 
 ---
 
 ## License
-
-MIT (or your chosen license)
-
-| **React Front-end**    | `/`        | Interactive UI for code submission and results display | ✅ Ready              |
-| **LLM Interface**      | `/llm`     | Natural language to SAS code (future)                 | 🚧 **WORK IN PROGRESS** |
-| **Authentication**     | -          | OAuth/token-based endpoint security                   | 🚫 **Not Being Developed in this MVP** |
-| **Persistent Storage** | -          | Database or file-based result persistence             | 🚧 **WORK IN PROGRESS** |
-| **Advanced Logging**   | -          | Structured logs, metrics, admin UI, observability     | 🚧 **WORK IN PROGRESS** |
-
----
-
-## How it Works
-
-Typical workflow for using the MCP SAS Viya API:
-
-1. **Submit SAS code** to `/run` and receive a `job_id`.
-2. **Check status** of the job using `/status?job_id=...`.
-3. **Once complete, fetch results** using `/results?job_id=...`.
-4. **If needed, cancel a job** using `/cancel`.
-
----
-
-## Example Usage
-
-### 1. Run SAS Code
-**Request:**
-```json
-POST /run
-{
-  "code": "data _null_; put 'Hello, world!'; run;"
-}
-```
-**Response:**
-```json
-{
-  "job_id": "job-123",
-  "session_id": "session-abc",
-  "state": "completed",
-  "condition_code": 0,
-  "log": "SAS log output",
-  "listing": "SAS listing output",
-  "data": {"result": "Sample result"},
-  "message": "Job completed successfully.",
-  "error": null
-}
-```
-
-### 2. Check Job Status
-**Request:**
-```
-GET /status?job_id=job-123
-```
-**Response:**
-```json
-{
-  "job_id": "job-123",
-  "session_id": null,
-  "state": "completed",
-  "message": "Job completed.",
-  "error": null
-}
-```
-
-### 3. Fetch Results
-**Request:**
-```
-GET /results?job_id=job-123
-```
-**Response:**
-```json
-{
-  "job_id": "job-123",
-  "session_id": null,
-  "log": "SAS log output",
-  "listing": "SAS listing output",
-  "data": {"result": "Sample result"},
-  "message": "Results fetched.",
-  "error": null
-}
-```
-
-### 4. Cancel a Job
-**Request:**
-```json
-POST /cancel
-{
-  "job_id": "job-123",
-  "session_id": null
-}
-```
-**Response:**
-```json
-{
-  "job_id": "job-123",
-  "session_id": null,
-  "state": "cancelled",
-  "message": "Job cancelled.",
-  "error": null
-}
-```
-
-### 5. Health Check
-**Request:**
-```
-GET /health
-```
-**Response:**
-```json
-{
-  "status": "ok",
-  "version": "1.0.0",
-  "message": "MCP SAS Viya API is healthy."
-}
-```
-
----
-
-## Front-end Application
-
-To run the React front-end:
-
-```sh
-# Navigate to the frontend directory
-cd frontend
-
-# Install dependencies
-npm install
-
-# Start the development server
-npm start
-```
-
-Open [http://localhost:3000](http://localhost:3000) to view the UI.
-
-For a production build:
-
-```sh
-npm run build
-```
-
----
-
-## Project Structure
-
-```
-SAS_MCP/
-├── mcp_sasviya/
-│   ├── main.py          # FastAPI app and endpoints
-│   ├── schemas.py       # Pydantic models (MCP schema)
-│   ├── sas_client.py    # SAS Viya API integration logic (stubbed)
-│   └── ...
-├── frontend/            # React front-end application
-├── deploy.yaml          # Kubernetes Deployment manifest
-├── service.yaml         # Kubernetes Service manifest
-├── Dockerfile
-├── requirements.txt
-└── README.md
-```
-
----
-
-## Instructions of using MCP Inspector to test (VS code + browser)
-1) Run from SAS_MCP directory: `$Env:PYTHONPATH = $PWD`
-2) Run from SAS_MCP directory: `mcp dev mcp_sasviya\mcp_server.py`
-3) Open MCP Inspector in your browser.
-4) Use the command: `mcp`
-5) Arguments: `run mcp_sasviya/mcp_server.py` (not mcp_sasviya\mcp_server)
-6) Set environment variables as needed (e.g., `PYTHONPATH`).
-7) Got to Tools on Top & List Tools
-8) Click "Run" to start the server.
-
-
----
-
-## Areas for Future Development
-
-- **LLM/AI Integration:** Natural language interface for code generation and results interpretation (**WIP**)
-- **Persistent Storage:** Integrate a database for job/data persistence (**WIP**)
-- **Advanced Logging & Observability:** Metrics, tracing, and admin UI (**WIP**)
-- **Authentication:** OAuth/token-based security (Not planned for this MVP)
-- **CI/CD Automation:** GitHub Actions for automated build and deployment (**WIP**)
-
----
-
-## License
-
 MIT (or specify your license here)
 
 ---
 
 ## Contributing
-
 Contributions and feedback are welcome!  
 Please open issues or pull requests on [GitHub](https://github.com/hemdesai/SAS_MCP).
-
----

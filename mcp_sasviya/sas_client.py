@@ -1,11 +1,7 @@
-<<<<<<< HEAD
-from typing import Optional, Any, List, Dict
-=======
-rom typing import Optional, Any
->>>>>>> cb80fd6d7cbf83f2e22b576ca5d5ef941391dd70
+from typing import Optional, Any, Dict
 from mcp_sasviya.schemas import (
     RunRequest, RunResponse, StatusResponse, ResultsResponse,
-    CancelRequest, CancelResponse, HealthResponse, TableRequest, TableResponse
+    CancelRequest, CancelResponse, HealthResponse
 )
 
 def run_code(request: RunRequest) -> RunResponse:
@@ -39,23 +35,7 @@ def run_code(request: RunRequest) -> RunResponse:
             return RunResponse(job_id=None, session_id=None, state='failed', condition_code=-1, log='', listing='', data=None, message='Failed create session', error=r2.text)
         session_id = r2.json().get('id')
         job_url = f"{sas_server}/compute/sessions/{session_id}/jobs"
-<<<<<<< HEAD
-        job_hdr = {'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'}
-        codes = request.code.split('\n') if isinstance(request.code, str) else request.code
-        job_pl = {
-            'version': 1,
-            'name': 'mcp',
-            'description': 'Submitting code from MCP',
-            'code': codes,
-            'attributes': {'resetLogLineNumbers': True}
-        }
-        r3 = requests.post(job_url, headers=job_hdr, data=json.dumps(job_pl), verify=False)
-        if r3.status_code != 201:
-            return RunResponse(job_id=None, session_id=session_id, state='failed', condition_code=-1, log='', listing='', data=None, message=f'Submission error: {r3.text}', error=r3.text)
-        res = r3.json()
-=======
         job_headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
-        # Use flat job payload matching working test script
         code_lines = request.code.split("\n") if isinstance(request.code, str) else request.code
         job_payload = {
             "version": 1,
@@ -80,20 +60,18 @@ def run_code(request: RunRequest) -> RunResponse:
         data = None
         message = "Job submitted successfully."
         error = None
->>>>>>> cb80fd6d7cbf83f2e22b576ca5d5ef941391dd70
         return RunResponse(
-            job_id=res.get('id'),
+            job_id=job_id,
             session_id=session_id,
-            state=res.get('state', 'submitted'),
-            condition_code=res.get('conditionCode', 0),
-            log='',
-            listing='',
-            data=None,
-            message='Job submitted successfully',
-            error=None
+            state=state,
+            condition_code=condition_code,
+            log=log,
+            listing=listing,
+            data=data,
+            message=message,
+            error=error
         )
     except Exception as e:
-        import logging
         logging.exception('Exception in run_code')
         return RunResponse(job_id=None, session_id=None, state='failed', condition_code=-1, log='', listing='', data=None, message=str(e), error='mcp.run.error')
 
@@ -233,100 +211,12 @@ def check_health() -> HealthResponse:
         version="1.0.0",
         message="MCP SAS Viya API is healthy."
     )
-    # On error, return a full RunResponse with error info and required fields
-    return RunResponse(
-        job_id=None,
-        session_id=None,
-        state="failed",
-        condition_code=-1,
-        log=None,
-            listing=None,
-            data=None,
-            message=None,
-            error=str(e)
-        )
-
-def get_compute_context_uuid(access_token, sas_server, context_name="SAS Studio compute context"):
-    url = f"{sas_server}/compute/contexts?filter=eq(name,'{context_name}')"
-    headers = {"Authorization": f"Bearer {access_token}"}
-    resp = requests.get(url, headers=headers, verify=False)
-    resp.raise_for_status()
-    data = resp.json()
-    return data['items'][0]['id'] if data.get("items") else None
-
-def create_sas_session(access_token, sas_server, context_name="SAS Studio compute context"):
-    ctx_uuid = get_compute_context_uuid(access_token, sas_server, context_name)
-    if not ctx_uuid:
-        raise Exception("Could not find compute context UUID")
-    url = f"{sas_server}/compute/contexts/{ctx_uuid}/sessions"
-    headers = {"Authorization": f"Bearer {access_token}"}
-    resp = requests.post(url, headers=headers, verify=False)
-    print("Status:", resp.status_code, "Content:", resp.text)
-    resp.raise_for_status()
-    return resp.json()["id"]
-
-def submit_sas_code(session_id, access_token, sas_code, sas_server):
-    url = f"{sas_server}/compute/sessions/{session_id}/jobs"
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/vnd.sas.compute.job.request+json"
-    }
-    code = sas_code if isinstance(sas_code, str) else "\n".join(sas_code)
-    payload = {"code": code}
-    logging.debug(f"Submitting SAS code to {url}")
-    logging.debug(f"Headers: {headers}")
-    logging.debug(f"Payload: {payload}")
-
-    try:
-        resp = requests.post(url, headers=headers, json=payload, verify=False)
-        logging.debug(f"Job submission response status: {resp.status_code}")
-        logging.debug(f"Job submission response content: {resp.text}")
-        resp.raise_for_status()
-        return resp.json()
-    except Exception as e:
-        logging.error("Error during SAS job submission:")
-        logging.error(traceback.format_exc())
-        raise
-
-def check_job_submission_status(session_id, job_id, access_token, sas_server):
-    url = f"{sas_server}/compute/sessions/{session_id}/jobs/{job_id}"
-    headers = {"Authorization": f"Bearer {access_token}"}
-    resp = requests.get(url, headers=headers, verify=False)
-    resp.raise_for_status()
-    return resp.json().get("state", "unknown")
-
-def get_job_results(session_id, job_id, access_token, result_types, library, table, sas_server):
-    """
-    Fetch logs, output listings, and data results for a completed SAS job in Viya.
-    Used by the /results endpoint to provide users with job outputs for further analysis.
-    """
-    results = {}
-    if "log" in result_types:
-        url = f"{sas_server}/compute/sessions/{session_id}/jobs/{job_id}/log"
-        headers = {"Authorization": f"Bearer {access_token}"}
-        resp = requests.get(url, headers=headers, verify=False)
-        if resp.status_code == 200:
-            results["log"] = resp.json().get("log")
-    if "results" in result_types:
-        url = f"{sas_server}/compute/sessions/{session_id}/jobs/{job_id}/results"
-        headers = {"Authorization": f"Bearer {access_token}"}
-        resp = requests.get(url, headers=headers, verify=False)
-        if resp.status_code == 200:
-            results["results"] = resp.json().get("results")
-    if "data" in result_types and library and table:
-        url = f"{sas_server}/compute/sessions/{session_id}/data/{library.upper()}/{table.upper()}/rows?limit=100000"
-        headers = {"Authorization": f"Bearer {access_token}"}
-        resp = requests.get(url, headers=headers, verify=False)
-        if resp.status_code == 200:
-            results["data"] = resp.json().get("items")
-    return results
 
 def get_table(session_id: str, library: str, table_name: str) -> Dict[str, Any]:
     """
     Enhanced table fetch: returns columns and rows in a user-friendly JSON format.
     """
-<<<<<<< HEAD
-    import requests, os
+    import requests, os, logging
     try:
         with open(os.path.join(os.path.dirname(__file__), '..', 'access_token.txt'), 'r') as f:
             access_token = f.read().strip()
@@ -363,7 +253,6 @@ def get_table(session_id: str, library: str, table_name: str) -> Dict[str, Any]:
             "error": None
         }
     except Exception as e:
-        import logging
         logging.exception("Exception in get_table")
         return {
             "columns": [],
@@ -371,20 +260,3 @@ def get_table(session_id: str, library: str, table_name: str) -> Dict[str, Any]:
             "message": str(e),
             "error": "mcp.table.error"
         }
-=======
-    import requests
-    import os
-    # Read access token and server URL (reuse logic from run_code)
-    with open(os.path.join(os.path.dirname(__file__), '..', 'access_token.txt'), 'r') as f:
-        access_token = f.read().strip()
-    with open(os.path.join(os.path.dirname(__file__), '..', 'access_server.txt'), 'r') as f:
-        sas_server = f.read().strip()
-    # Construct the endpoint URL
-    url = f"{sas_server}/compute/sessions/{session_id}/data/{library}/{table_name}/rows?limit=100000"
-    headers = {"Authorization": f"Bearer {access_token}"}
-    resp = requests.get(url, headers=headers, verify=False)
-    if resp.status_code == 200:
-        return resp.json()
-    else:
-        raise Exception(f"Failed to fetch table: {resp.status_code} {resp.text}")
->>>>>>> cb80fd6d7cbf83f2e22b576ca5d5ef941391dd70
