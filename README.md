@@ -62,14 +62,17 @@ run;
 ---
 
 ## Available Tools (MCP)
-| Tool       | Description                      |
-|------------|----------------------------------|
-| run        | Submit SAS code for execution    |
-| status     | Check job/session status         |
-| results    | Fetch logs/output for a job      |
-| table      | Retrieve a table by name         |
-| cancel     | Cancel a running job             |
-| health     | Server health check              |
+| Tool       | Description                          |
+|------------|------------------------------------|
+| run        | Submit SAS code for execution      |
+| status     | Check job/session status           |
+| results    | Fetch logs/output for a job        |
+| table      | Retrieve a table by name           |
+| cancel     | Cancel a running job               |
+| health     | Server health check                |
+| context    | Retrieve full session context      |
+
+> **Note:** The new `context` tool allows you to retrieve the full session context—including history, variables, and results—enabling advanced session-aware analytics and seamless chaining of operations.
 
 ---
 
@@ -202,6 +205,10 @@ run;
 MIT (or specify your license here)
 
 ---
+
+## Contributing
+Contributions and feedback are welcome!  
+Please open issues or pull requests on [GitHub](https://github.com/hemdesai/SAS_MCP).
 
 ## Contributing
 Contributions and feedback are welcome!  
