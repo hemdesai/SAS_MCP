@@ -68,6 +68,19 @@ async def cancel(request: CancelRequest):
         raise HTTPException(status_code=400, detail=response.message)
     return response
 
+@api_router.post("/run", response_model=RunResponse, responses={400: {"model": ErrorResponse}})
+async def run(request: RunRequest):
+    """
+    Run SAS Code
+    -----------------
+    Submit SAS code for execution. Returns a job ID and session ID for tracking.
+    Example use case: Automate analytics, reporting, or ETL tasks by submitting code to SAS Viya.
+    """
+    response = sas_client.run_code(request)
+    if response.state == "failed":
+        raise HTTPException(status_code=400, detail=response.message)
+    return response
+
 @api_router.get("/health", response_model=HealthResponse)
 async def health():
     """

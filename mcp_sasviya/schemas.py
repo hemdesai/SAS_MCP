@@ -82,3 +82,14 @@ class ErrorResponse(BaseModel):
     message: str = Field(..., description="Human-readable error message")
     error: Optional[str] = Field(None, description="Error code")
     details: Optional[List[Any]] = Field(None, description="Additional details")
+
+class TableRequest(BaseModel):
+    session_id: str = Field(..., description="SAS Compute session ID")
+    library: str = Field(..., description="SAS library name")
+    table_name: str = Field(..., description="SAS table name")
+
+class TableResponse(BaseModel):
+    columns: List[str] = Field(..., description="Column names for the table")
+    rows: List[List[Any]] = Field(..., description="Row data for the table")
+    message: Optional[str] = Field(None, description="Status or error message")
+    error: Optional[str] = Field(None, description="Error details, if any")
