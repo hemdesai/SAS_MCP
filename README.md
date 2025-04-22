@@ -1,7 +1,6 @@
-# MCP SAS Viya Server (MCP/STDIO Edition)
+# React front end chatbot (not LLM) - SAS MCP demo
 
-**Executive Summary:**
-This repository delivers a production-ready, MCP-compliant SAS Viya server that enables any AI agent, LLM, or orchestration platform to securely run, monitor, and retrieve SAS analytics jobs using the Model Context Protocol (MCP) over standard input/output (STDIO). No REST APIs, containers, or frontends required—just pure, agent-driven analytics automation.
+This branch contains a demo of a React-based chatbot UI that interacts with a FastAPI backend to execute SAS code using the Model Context Protocol (MCP). No LLMs or GenAI are used for conversation or code generation; all math and SAS execution is handled by SAS MCP.
 
 ---
 
@@ -21,21 +20,28 @@ This repository delivers a production-ready, MCP-compliant SAS Viya server that 
 
 ---
 
-## How to Use (MCP Inspector or LLM/Agent)
-1. From the `SAS_MCP` directory, set your Python path:
+## How to Use This Demo
+
+1. Clone this branch and install dependencies:
+   ```sh
+   pip install -r requirements.txt
+   cd archive/frontend
+   npm install
+   ```
+2. Set your Python path (PowerShell):
    ```sh
    $Env:PYTHONPATH = $PWD
    ```
-2. Start the MCP server:
+3. Start the FastAPI backend (from project root):
    ```sh
-   mcp dev mcp_sasviya\mcp_server.py
+   uvicorn mcp_sasviya.main:app --reload --port 8000
    ```
-3. Open [MCP Inspector](https://inspector.modelcontext.org/) in your browser.
-4. At the prompt, enter: `mcp`
-5. Use arguments: `run mcp_sasviya/mcp_server.py`
-6. Ensure `PYTHONPATH` is set if needed.
-7. In the Inspector UI, go to **Tools** → **List Tools**.
-8. Click **Run** to execute SAS code via the `run` tool or explore other available tools (`status`, `results`, `table`, `health`).
+4. Start the React frontend (in `archive/frontend`):
+   ```sh
+   npm start
+   ```
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+6. Enter SAS code or math prompts in the chat UI. To fetch tables, include a line like `Tables: results1, results2` at the end of your message.
 
 ---
 
@@ -62,18 +68,35 @@ run;
 ---
 
 ## Available Tools (MCP)
-| Tool       | Description                      |
-|------------|----------------------------------|
-| run        | Submit SAS code for execution    |
-| status     | Check job/session status         |
-| results    | Fetch logs/output for a job      |
-| table      | Retrieve a table by name         |
-| cancel     | Cancel a running job             |
-| health     | Server health check              |
+| Tool       | Description                          |
+|------------|------------------------------------|
+| run        | Submit SAS code for execution      |
+| status     | Check job/session status           |
+| results    | Fetch logs/output for a job        |
+| table      | Retrieve a table by name           |
+| cancel     | Cancel a running job               |
+| health     | Server health check                |
+| context    | Retrieve full session context      |
 
 ---
 
-## Best Practices & Limitations
+## UI Details
+
+The React frontend provides a simple chat interface for users to interact with the SAS MCP backend. Users can enter SAS code or math prompts, and the backend will execute the code and return the results in a clean, JSON format.
+
+---
+
+## Backend Logic (Table Extraction)
+
+The FastAPI backend uses the SAS Viya integration logic to execute SAS code and extract tables from the results. The `table` tool allows users to retrieve tables by name, and the `results` tool returns the logs/output for a job.
+
+---
+
+## Troubleshooting
+
+* Make sure to set the Python path correctly before starting the FastAPI backend.
+* Check the console logs for any errors or warnings.
+* If you encounter issues with the React frontend, try restarting the development server.
 - **Always write output to a table** (e.g., `work.results1`). Only tables can be fetched.
 - **Wait for job completion** before fetching tables (check `status`).
 - **Character variables**: Use `length varname $N;` to avoid truncation.

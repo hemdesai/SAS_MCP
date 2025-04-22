@@ -38,6 +38,17 @@ def run_code(request: RunRequest) -> RunResponse:
     session_id = getattr(request, 'session_id', None)
     code = getattr(request, 'code', None)
     ctx = session_context.setdefault(session_id, {}) if session_id else {}
+    # Detect 'add' prompt and convert to SAS code
+    if isinstance(code, str) and code.strip().lower().startswith("add"):
+        # Extract numbers from the prompt
+        numbers = [int(x) for x in re.findall(r"\d+", code)]
+        if numbers:
+            sas_code = f"data work.results; x={' + '.join(map(str, numbers))}; run;"
+            request.code = sas_code
+            ctx['last_code'] = sas_code
+    else:
+        if session_id:
+            ctx['last_code'] = code
     # Context-aware chaining for prompts like 'add 3 more'
     if isinstance(code, str) and code.strip().lower().startswith("add"):
         match = re.search(r"add (\d+)", code.strip().lower())
@@ -49,8 +60,6 @@ def run_code(request: RunRequest) -> RunResponse:
                 sas_code = f"data work.results; x={prev_x}+{add_value}; run;"
                 ctx['last_code'] = sas_code
                 request.code = sas_code
-    else:
-        if session_id:
             ctx['last_code'] = code
     return client.run_code(request)
 

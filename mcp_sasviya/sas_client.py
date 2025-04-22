@@ -130,6 +130,40 @@ def get_results(job_id: str, session_id: Optional[str] = None, library: str = 'w
         with open(os.path.join(os.path.dirname(__file__), '..', 'access_server.txt'), 'r') as f:
             sas_server = f.read().strip()
         headers = {"Authorization": f"Bearer {access_token}"}
+        # Fetch log
+        log_url = f"{sas_server}/compute/sessions/{session_id}/jobs/{job_id}/log?limit=100000"
+        log_resp = requests.get(log_url, headers=headers, verify=False)
+        log = ""
+        if log_resp.status_code == 200:
+            log_data = log_resp.json()
+            log_lines = [item.get("line", "") for item in log_data.get("items", [])]
+            log = "\n".join(log_lines)
+        # Fetch ODS results (listing)
+        listing_url = f"{sas_server}/compute/sessions/{session_id}/jobs/{job_id}/results?limit=100000"
+        listing_resp = requests.get(listing_url, headers=headers, verify=False)
+        listing = []
+        if listing_resp.status_code == 200:
+            listing_data = listing_resp.json()
+            listing = listing_data.get('items', [])
+        # Fetch table using get_table
+        from mcp_sasviya.sas_client import get_table
+        table_json = get_table(session_id, library, table)
+        # Optionally extract answer for simple jobs (e.g., x=8)
+        import re
+        answer = None
+        match = re.search(r"x=([\d+\-*/.]+)", log)
+        if match:
+            answer = match.group(1)
+        return ResultsResponse(
+            job_id=job_id,
+            session_id=session_id,
+            log=log,
+            listing=json.dumps(listing, indent=2),
+            data=table_json,
+            answer=answer,
+            message="Results fetched (log, ODS, table, answer).",
+            error=None
+        )
         results = {}
         # Fetch log
         log_url = f"{sas_server}/compute/sessions/{session_id}/jobs/{job_id}/log?limit=100000"

@@ -1,4 +1,7 @@
-# Getting Started with Create React App
+# SAS MCP React Chatbot Demo
+
+This frontend is a React-based chatbot UI for submitting SAS code and math prompts to a SAS MCP backend.
+
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 

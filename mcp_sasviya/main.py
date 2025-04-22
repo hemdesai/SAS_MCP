@@ -11,6 +11,8 @@ from mcp_sasviya.schemas import (
 )
 from mcp_sasviya import sas_client
 import logging
+from mcp_sasviya import mcp_server
+from mcp_sasviya import mcp_server
 
 logging.basicConfig(level=logging.INFO)
 
@@ -109,6 +111,110 @@ async def get_table(
         raise HTTPException(status_code=400, detail=str(e))
 
 app.include_router(api_router, prefix="/api")
+
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
+@app.post("/chatbot")
+async def chatbot_endpoint(request: Request):
+    data = await request.json()
+    prompt = data.get("prompt")
+    session_id = data.get("session_id")
+    import re
+    tables = []
+    # Extract table names from the prompt if present
+    if prompt:
+        match = re.search(r"Tables:\s*(.*)", prompt, re.IGNORECASE)
+        if match:
+            table_line = match.group(1)
+            tables = [t.strip() for t in table_line.split(",") if t.strip()]
+    if not tables:
+        tables = ["results"]
+    mcp = mcp_server.mcp
+    import json
+    import logging
+    run_req = {"request": {"code": prompt, "session_id": session_id}}
+    run_resp = await mcp.call_tool("run", run_req)
+    logging.warning(f"run_resp: {run_resp}")
+    # Handle if run_resp is a list with TextContent
+    job_id = session_id = None
+    if isinstance(run_resp, list) and run_resp:
+        resp_obj = run_resp[0]
+        if hasattr(resp_obj, "text"):
+            try:
+                run_resp_json = json.loads(resp_obj.text)
+                job_id = run_resp_json.get("job_id")
+                session_id = run_resp_json.get("session_id")
+            except Exception as e:
+                logging.error(f"Failed to parse run_resp.text: {e}")
+        else:
+            job_id = session_id = None
+    else:
+        job_id = getattr(run_resp, 'job_id', None)
+        session_id = getattr(run_resp, 'session_id', None)
+    # Poll for job completion
+    import time
+    status_req = {"job_id": job_id, "session_id": session_id}
+    status = await mcp.call_tool("status", status_req)
+    import json
+    import logging
+    for _ in range(30):
+        # Handle list/TextContent for status
+        status_obj = status
+        if isinstance(status, list) and status:
+            if hasattr(status[0], "text"):
+                try:
+                    status_obj = json.loads(status[0].text)
+                except Exception as e:
+                    logging.error(f"Failed to parse status.text: {e}")
+                    status_obj = {}
+            else:
+                status_obj = {}
+        if status_obj.get("state") != "running":
+            break
+        time.sleep(1)
+        status = await mcp.call_tool("status", status_req)
+    # After polling, extract final status_obj
+    final_status_obj = status
+    if isinstance(status, list) and status:
+        if hasattr(status[0], "text"):
+            try:
+                final_status_obj = json.loads(status[0].text)
+            except Exception as e:
+                logging.error(f"Failed to parse status.text: {e}")
+                final_status_obj = {}
+        else:
+            final_status_obj = {}
+    results_req = {"job_id": job_id, "session_id": session_id}
+    results = await mcp.call_tool("results", results_req)
+    # Handle list/TextContent for results
+    results_obj = results
+    if isinstance(results, list) and results:
+        if hasattr(results[0], "text"):
+            try:
+                results_obj = json.loads(results[0].text)
+            except Exception as e:
+                logging.error(f"Failed to parse results.text: {e}")
+                results_obj = {}
+        else:
+            results_obj = {}
+    # Fetch all requested tables
+    results_tables = {}
+    from mcp_sasviya.sas_client import get_table
+    for t in tables:
+        if session_id and t:
+            try:
+                results_tables[t] = get_table(session_id, "work", t)
+            except Exception as exc:
+                results_tables[t] = {"columns": [], "rows": [], "message": str(exc), "error": True}
+    return JSONResponse({
+        "job_id": job_id,
+        "session_id": session_id,
+        "state": final_status_obj.get("state"),
+        "tables": results_tables,
+        "log": results_obj.get("log"),
+        "error": results_obj.get("error")
+    })
 
 frontend_build_dir = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'build')
 from fastapi.staticfiles import StaticFiles
