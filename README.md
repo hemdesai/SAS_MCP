@@ -135,36 +135,6 @@ python mcp_sasviya/mcp_server.py
 
 ---
 
-## Instructions for Using MCP Inspector (VS Code + Browser)
-1) Run from `SAS_MCP` directory: `$Env:PYTHONPATH = $PWD`
-2) Start the server: `mcp dev mcp_sasviya\mcp_server.py`
-3) Open [MCP Inspector](https://inspector.modelcontext.org/) in your browser.
-4) At the prompt, enter: `mcp`
-5) Use arguments: `run mcp_sasviya/mcp_server.py`
-6) Ensure `PYTHONPATH` is set to your project root if needed.
-7) In the Inspector UI, go to **Tools** → **List Tools**.
-8) Click **Run** to invoke the `run` tool and start executing SAS code.
-
----
-
-## Areas for Future Development
-- **Persistent storage** (future)
-- **Advanced logging/metrics** (future)
-- **Natural language/LLM agent integration** (future)
-
----
-
-## License
-MIT (or specify your license here)
-
----
-
-## Contributing
-Contributions and feedback are welcome!  
-Open issues or pull requests on [GitHub](https://github.com/hemdesai/SAS_MCP).
-
----
-
 ## ⚠️ IMPORTANT: How to Retrieve Results from SAS Jobs
 
 ### Example: Multiple Outputs in One Job
@@ -204,16 +174,6 @@ run;
 
 ---
 
-## MCP Inspector Quickstart
-1. Start the server: `python mcp_sasviya/mcp_server.py`
-2. Open MCP Inspector in your browser.
-3. Set `Transport Type` to STDIO.
-4. Command: `mcp`
-5. Arguments: `run mcp_sasviya/mcp_server.py`
-6. List tools, call `run`, `status`, `results`, `table`, etc.
-
----
-
 ## Roadmap
 - **Persistent storage** (future)
 - **Advanced logging/metrics** (future)
@@ -225,6 +185,10 @@ run;
 MIT (or specify your license here)
 
 ---
+
+## Contributing
+Contributions and feedback are welcome!  
+Open issues or pull requests on [GitHub](https://github.com/hemdesai/SAS_MCP).
 
 ## Contributing
 Contributions and feedback are welcome!  
