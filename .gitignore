@@ -1,0 +1,31 @@
+# Ignore Python cache and environment files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore virtual environment directories
+venv/
+env/
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore IDE/project files
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Ignore SAS MCP sensitive/config files
+access_token.txt
+refresh_token.txt
+access_server.txt
+
+# Ignore Streamlit/OpenAI secrets
+frontend/.env
+
+# Ignore other user secrets
+*.env
+.env.*
