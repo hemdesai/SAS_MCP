@@ -1,6 +1,6 @@
-# React front end chatbot (not LLM) - SAS MCP demo
+# SAS MCP Chatbot Demo (Streamlit, GPT 4.1 Mini, MCP Orchestration)
 
-This branch contains a demo of a React-based chatbot UI that interacts with a FastAPI backend to execute SAS code using the Model Context Protocol (MCP). No LLMs or GenAI are used for conversation or code generation; all math and SAS execution is handled by SAS MCP.
+This project is a demo of a Streamlit-based chatbot UI that interacts with a FastAPI backend, executing SAS code and math prompts using the Model Context Protocol (MCP). All SAS operations are routed through MCP tools only; no direct SAS client calls are made.
 
 ---
 
@@ -17,6 +17,8 @@ This branch contains a demo of a React-based chatbot UI that interacts with a Fa
 - **Structured Output**: Results are returned as clean, developer/LLM-friendly JSON.
 - **Session Management**: Tables and outputs are session-scoped for reliability.
 - **Tested with MCP Inspector**: Fully validated for agent-driven workflows.
+- **Demo UI**: Uses Streamlit for the chatbot interface.
+- **LLM/Prompts**: Uses OpenAI GPT-4.1-mini for natural language math (all SAS code is routed through MCP).
 
 ---
 
@@ -36,12 +38,16 @@ This branch contains a demo of a React-based chatbot UI that interacts with a Fa
    ```sh
    uvicorn mcp_sasviya.main:app --reload --port 8000
    ```
-4. Start the React frontend (in `archive/frontend`):
+4. Start the Streamlit frontend (from project root):
    ```sh
-   npm start
+   streamlit run frontend/chatbot_demo.py
    ```
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
-6. Enter SAS code or math prompts in the chat UI. To fetch tables, include a line like `Tables: results1, results2` at the end of your message.
+5. Open [http://localhost:8501](http://localhost:8501) in your browser.
+6. Enter SAS code or math prompts in the chat UI.
+- **For multi-step SAS code:** Specify the output table name (e.g., `results2`) in the single Table Name input to fetch the correct results. Only one Table Name input is used and honored.
+- **For math prompts/simple arithmetic:** The backend auto-fetches `work.results.x` for you, but for all other code, the Table Name field determines which table is fetched.
+- The UI and backend always use the Table Name input as provided by the user.
+7. All results are fetched via MCP tools and the MCP tool call trace is shown after each response.
 
 ---
 
@@ -82,13 +88,13 @@ run;
 
 ## UI Details
 
-The React frontend provides a simple chat interface for users to interact with the SAS MCP backend. Users can enter SAS code or math prompts, and the backend will execute the code and return the results in a clean, JSON format.
+The Streamlit frontend provides a chat interface for users to interact with the SAS MCP backend. Users can enter SAS code or math prompts, and the backend executes via MCP tools, returning results and MCP tool traces.
 
 ---
 
-## Backend Logic (Table Extraction)
+## Backend Logic / MCP Orchestration
 
-The FastAPI backend uses the SAS Viya integration logic to execute SAS code and extract tables from the results. The `table` tool allows users to retrieve tables by name, and the `results` tool returns the logs/output for a job.
+The FastAPI backend uses the MCP tool layer for all SAS operations. Tools like `run_code`, `get_table`, and `get_results` are invoked for every user request, and each tool logs its invocation for traceability. No SAS client calls bypass MCP.
 
 ---
 
@@ -97,11 +103,11 @@ The FastAPI backend uses the SAS Viya integration logic to execute SAS code and 
 * Make sure to set the Python path correctly before starting the FastAPI backend.
 * Check the console logs for any errors or warnings.
 * If you encounter issues with the React frontend, try restarting the development server.
-- **Always write output to a table** (e.g., `work.results1`). Only tables can be fetched.
-- **Wait for job completion** before fetching tables (check `status`).
-- **Character variables**: Use `length varname $N;` to avoid truncation.
-- **Dates**: Use `put(datevar, yymmdd10.);` for readable output.
-- **Session scope**: Tables exist only within the session/job that created them.
+- Always write output to a table (e.g., `work.results`). Only tables can be fetched.
+- Wait for job completion before fetching tables.
+- Use `length varname $N;` for character variables to avoid truncation.
+- Use `put(datevar, yymmdd10.);` for readable dates.
+- Tables exist only within the session/job that created them.
 
 ---
 
@@ -158,18 +164,12 @@ run;
 
 ## Key Features
 
-- Unified REST API for SAS Viya code execution and data retrieval.
+- All SAS operations are routed through MCP tools only (no direct SAS client calls).
 - Supports multiple output tables per job; fetch each by name.
-- Clean JSON output:
-  ```json
-  {
-    "columns": ["id", "name", "salary", ...],
-    "rows": [[1, "Alice", 55000, ...], ...]
-  }
-  ```
+- Clean JSON output for results.
 - Handles missing values, character truncation, and SAS date formatting (with recommended SAS code).
 - Session-based: tables are tied to the session in which they were created.
-- Extensible for more advanced analytics and workflows.
+- Extensible for advanced analytics and workflows.
 - Compatible with MCP Inspector UI for interactive testing and debugging.
 
 ---

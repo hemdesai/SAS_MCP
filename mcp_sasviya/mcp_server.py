@@ -23,32 +23,44 @@ mcp = FastMCP(
 import re
 
 def parse_addition_prompt(text):
+    import re
     numbers = [int(x) for x in re.findall(r"\d+", text)]
-    sas_code = f"data _null_; sum = {'+'.join(map(str, numbers))}; call symput('result', sum); run;"
+    sas_code = f"data work.results; sum = {'+'.join(map(str, numbers))}; run;"
     return numbers, sas_code
 
 @mcp.tool(name="run", description="Run SAS code or prompt")
 def run_code(request: RunRequest) -> RunResponse:
+    import logging
+    logging.info(f"[MCP TOOL] run_code called with session_id={getattr(request, 'session_id', None)}")
     """
-    Executes SAS code in a SAS Viya compute session. Accepts raw SAS code or natural language prompts (e.g., 'Add 2, 8, 5').
-    If a natural prompt is detected, it generates and runs the corresponding SAS code. Returns job execution status, job ID, and any error details.
-    Supports context-aware chaining: e.g., 'add 3 more' will use the last value from the context.
+    MCP tool: Submit SAS code or math prompt via MCP for execution in SAS Viya. Returns job status and details. All orchestration is via MCP tools only.
     """
     import re
     session_id = getattr(request, 'session_id', None)
     code = getattr(request, 'code', None)
     ctx = session_context.setdefault(session_id, {}) if session_id else {}
-    # Detect 'add' prompt and convert to SAS code
-    if isinstance(code, str) and code.strip().lower().startswith("add"):
-        # Extract numbers from the prompt
-        numbers = [int(x) for x in re.findall(r"\d+", code)]
-        if numbers:
-            sas_code = f"data work.results; x={' + '.join(map(str, numbers))}; run;"
-            request.code = sas_code
-            ctx['last_code'] = sas_code
-    else:
-        if session_id:
-            ctx['last_code'] = code
+    # Always rewrite math prompts and simple data steps to work.results.x for demo consistency
+    if isinstance(code, str):
+        code_stripped = code.strip().lower()
+        # Handle 'add' prompt
+        if code_stripped.startswith("add"):
+            numbers = [int(x) for x in re.findall(r"\d+", code)]
+            if numbers:
+                sas_code = f"data work.results; x={' + '.join(map(str, numbers))}; output; run;"
+                request.code = sas_code
+                ctx['last_code'] = sas_code
+        # Handle simple data step with assignment but not to x
+        elif re.match(r"data work\.results;.*=.*;.*output;.*run;", code_stripped, re.DOTALL):
+            # Replace any assignment to ensure variable is 'x'
+            expr_match = re.search(r"data work\.results;\s*(\w+)\s*=([^;]+);\s*output;\s*run;", code_stripped, re.DOTALL)
+            if expr_match:
+                expr = expr_match.group(2).strip()
+                sas_code = f"data work.results; x = {expr}; output; run;"
+                request.code = sas_code
+                ctx['last_code'] = sas_code
+        else:
+            if session_id:
+                ctx['last_code'] = code
     # Context-aware chaining for prompts like 'add 3 more'
     if isinstance(code, str) and code.strip().lower().startswith("add"):
         match = re.search(r"add (\d+)", code.strip().lower())
@@ -57,7 +69,7 @@ def run_code(request: RunRequest) -> RunResponse:
             last_table = ctx.get('last_table')
             if last_table and last_table.get('rows') and last_table['rows'][0]:
                 prev_x = last_table['rows'][0][0]
-                sas_code = f"data work.results; x={prev_x}+{add_value}; run;"
+                sas_code = f"data work.results; x={prev_x}+{add_value}; output; run;"
                 ctx['last_code'] = sas_code
                 request.code = sas_code
             ctx['last_code'] = code
@@ -72,6 +84,8 @@ def get_job_status(job_id: str, session_id: Optional[str] = None) -> StatusRespo
 
 @mcp.tool(name="results", description="Fetch SAS job results")
 def get_results(job_id: str, session_id: Optional[str] = None) -> ResultsResponse:
+    import logging
+    logging.info(f"[MCP TOOL] get_results called with job_id={job_id}, session_id={session_id}")
     """
     Retrieves the results of a previously executed SAS job from a SAS Viya compute session using job and session IDs. Returns logs, ODS output, tables, and error messages as a JSON object.
     """
@@ -79,6 +93,8 @@ def get_results(job_id: str, session_id: Optional[str] = None) -> ResultsRespons
 
 @mcp.tool(name="cancel", description="Cancel SAS job")
 def cancel_job(request: CancelRequest) -> CancelResponse:
+    import logging
+    logging.info(f"[MCP TOOL] cancel_job called with job_id={getattr(request, 'job_id', None)}, session_id={getattr(request, 'session_id', None)}")
     """
     Cancels a running SAS job in a SAS Viya compute session using the job and session IDs. Returns confirmation or error details.
     """
@@ -86,6 +102,8 @@ def cancel_job(request: CancelRequest) -> CancelResponse:
 
 @mcp.tool(name="table", description="Fetch table from session")
 def get_table(session_id: str, library: str, table_name: str) -> TableResponse:
+    import logging
+    logging.info(f"[MCP TOOL] get_table called with session_id={session_id}, library={library}, table_name={table_name}")
     """
     Fetches a table from a SAS Viya compute session using session ID, library, and table name. Returns columns, rows, and error info as a JSON object.
     """
@@ -102,6 +120,8 @@ def get_table(session_id: str, library: str, table_name: str) -> TableResponse:
 
 @mcp.tool(name="context", description="Show session context")
 def show_context(session_id: str) -> ContextResponse:
+    import logging
+    logging.info(f"[MCP TOOL] show_context called with session_id={session_id}")
     """
     Returns the full context (history, variables, results, etc.) stored for the given session_id as a JSON object. Useful for debugging, demos, and understanding session state.
     """
@@ -115,6 +135,8 @@ def show_context(session_id: str) -> ContextResponse:
 
 @mcp.tool(name="health", description="Health check")
 def check_health() -> HealthResponse:
+    import logging
+    logging.info("[MCP TOOL] check_health called")
     """
     Checks the health and availability of the SAS MCP server. Returns status and version info.
     """

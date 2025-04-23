@@ -102,10 +102,10 @@ async def get_table(
     """
     Get Table Data
     --------------
-    Fetches data from a specified table in a given session and library.
+    Fetches data from a specified table in a given session and library via MCP.
     """
     try:
-        table_data = sas_client.get_table(session_id, library, table_name)
+        table_data = mcp_server.get_table(session_id, library, table_name)
         return table_data
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -121,15 +121,21 @@ async def chatbot_endpoint(request: Request):
     prompt = data.get("prompt")
     session_id = data.get("session_id")
     import re
+    # Always use library and table_name from frontend if provided
+    library = data.get("library") or "work"
+    table_name = data.get("table_name")
     tables = []
-    # Extract table names from the prompt if present
-    if prompt:
-        match = re.search(r"Tables:\s*(.*)", prompt, re.IGNORECASE)
-        if match:
-            table_line = match.group(1)
-            tables = [t.strip() for t in table_line.split(",") if t.strip()]
-    if not tables:
-        tables = ["results"]
+    if table_name:
+        tables = [table_name]
+    else:
+        # Fallback: extract from prompt or use defaults
+        if prompt:
+            match = re.search(r"Tables:\s*(.*)", prompt, re.IGNORECASE)
+            if match:
+                table_line = match.group(1)
+                tables = [t.strip() for t in table_line.split(",") if t.strip()]
+        if not tables:
+            tables = ["results", "results1", "results2"]
     mcp = mcp_server.mcp
     import json
     import logging
@@ -185,43 +191,23 @@ async def chatbot_endpoint(request: Request):
                 final_status_obj = {}
         else:
             final_status_obj = {}
-    results_req = {"job_id": job_id, "session_id": session_id}
-    results = await mcp.call_tool("results", results_req)
-    # Handle list/TextContent for results
-    results_obj = results
-    if isinstance(results, list) and results:
-        if hasattr(results[0], "text"):
-            try:
-                results_obj = json.loads(results[0].text)
-            except Exception as e:
-                logging.error(f"Failed to parse results.text: {e}")
-                results_obj = {}
-        else:
-            results_obj = {}
-    # Fetch all requested tables
     results_tables = {}
-    from mcp_sasviya.sas_client import get_table
+    # Always use MCP server get_table for all fetches
     for t in tables:
         if session_id and t:
             try:
-                results_tables[t] = get_table(session_id, "work", t)
+                results_tables[t] = mcp_server.get_table(session_id, library, t)
             except Exception as exc:
                 results_tables[t] = {"columns": [], "rows": [], "message": str(exc), "error": True}
+
+    # Return tables in response
     return JSONResponse({
         "job_id": job_id,
         "session_id": session_id,
-        "state": final_status_obj.get("state"),
+        "state": final_status_obj.get("state", None),
         "tables": results_tables,
-        "log": results_obj.get("log"),
-        "error": results_obj.get("error")
-    })
+        "log": getattr(run_resp, "log", ""),
+    "error": getattr(run_resp, "error", None)
+})
 
-frontend_build_dir = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'build')
-from fastapi.staticfiles import StaticFiles
 
-# Serve React build (HTML + static) for all other routes
-app.mount(
-    "/",
-    StaticFiles(directory=frontend_build_dir, html=True),
-    name="static",
-)
