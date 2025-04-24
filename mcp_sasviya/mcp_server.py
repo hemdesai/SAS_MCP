@@ -20,7 +20,33 @@ mcp = FastMCP(
 )
 
 # Register tools
+import os
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+import openai
+openai.api_key = os.getenv("OPENAI_API_KEY")
 import re
+
+@mcp.tool(name="classify", description="Classify prompt via LLM as 'math' or 'sas'")
+def classify_prompt_tool(text: str) -> dict:
+    """
+    MCP tool: Use OpenAI LLM to classify the user prompt as 'math' or 'sas'. Note: Only SAS code jobs are supported.
+    """
+    import re
+    # LLM classification via OpenAI v1 chat completions
+    resp = openai.chat.completions.create(
+        model="gpt-4.1-mini-2025-04-14",
+        messages=[
+            {"role": "system", "content": "Classify the following user prompt as either 'math' or 'sas'. Respond with only the label."},
+            {"role": "user", "content": text}
+        ],
+        temperature=0,
+        max_tokens=5
+    )
+    label = resp.choices[0].message.content.strip().lower()
+    if "math" in label:
+        return {"type": "math"}
+    return {"type": "sas"}
 
 def parse_addition_prompt(text):
     import re
@@ -30,6 +56,15 @@ def parse_addition_prompt(text):
 
 @mcp.tool(name="run", description="Run SAS code or prompt")
 def run_code(request: RunRequest) -> RunResponse:
+    import logging
+    resp = client.run_code(request)
+    if not resp.job_id or not resp.session_id:
+        logging.error(f"[MCP TOOL] run_code failed: job_id or session_id missing. job_id={resp.job_id}, session_id={resp.session_id}")
+        resp.state = "failed"
+        resp.message = "Job submission failed: missing job_id or session_id"
+        resp.error = "mcp.run.missing_id"
+    return resp
+
     import logging
     logging.info(f"[MCP TOOL] run_code called with session_id={getattr(request, 'session_id', None)}")
     """
@@ -77,6 +112,12 @@ def run_code(request: RunRequest) -> RunResponse:
 
 @mcp.tool(name="status", description="Get SAS job status")
 def get_job_status(job_id: str, session_id: Optional[str] = None) -> StatusResponse:
+    import logging
+    if not job_id or not session_id:
+        logging.error(f"[MCP TOOL] get_job_status failed: job_id or session_id missing. job_id={job_id}, session_id={session_id}")
+        return StatusResponse(job_id=job_id, session_id=session_id, state="failed", message="Missing job_id or session_id", error="mcp.status.missing_id")
+    return client.get_job_status(job_id, session_id)
+
     """
     Retrieves the status of a SAS job in a SAS Viya compute session using the job and session IDs. Returns the current job state (e.g., running, completed, failed) and error details if applicable.
     """
@@ -84,6 +125,12 @@ def get_job_status(job_id: str, session_id: Optional[str] = None) -> StatusRespo
 
 @mcp.tool(name="results", description="Fetch SAS job results")
 def get_results(job_id: str, session_id: Optional[str] = None) -> ResultsResponse:
+    import logging
+    if not job_id or not session_id:
+        logging.error(f"[MCP TOOL] get_results failed: job_id or session_id missing. job_id={job_id}, session_id={session_id}")
+        return ResultsResponse(job_id=job_id, session_id=session_id, log=None, listing=None, data=None, answer=None, message="Missing job_id or session_id", error="mcp.results.missing_id")
+    return client.get_results(job_id, session_id)
+
     import logging
     logging.info(f"[MCP TOOL] get_results called with job_id={job_id}, session_id={session_id}")
     """
@@ -102,6 +149,20 @@ def cancel_job(request: CancelRequest) -> CancelResponse:
 
 @mcp.tool(name="table", description="Fetch table from session")
 def get_table(session_id: str, library: str, table_name: str) -> TableResponse:
+    import logging
+    if not session_id or not table_name:
+        logging.error(f"[MCP TOOL] get_table failed: session_id or table_name missing. session_id={session_id}, table_name={table_name}")
+        from mcp_sasviya.schemas import TableResponse
+        return TableResponse(columns=[], rows=[], message="Missing session_id or table_name", error="mcp.table.missing_id")
+    result = client.get_table(session_id, library, table_name)
+    ctx = session_context.setdefault(session_id, {})
+    ctx['last_table'] = result
+    tables = ctx.setdefault('tables', {})
+    tables[table_name] = result
+    history = ctx.setdefault('history', [])
+    history.append({"action": "table", "table_name": table_name, "result": result})
+    return result
+
     import logging
     logging.info(f"[MCP TOOL] get_table called with session_id={session_id}, library={library}, table_name={table_name}")
     """

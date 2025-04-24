@@ -1,6 +1,6 @@
 # SAS MCP Chatbot Demo (Streamlit, GPT 4.1 Mini, MCP Orchestration)
 
-This project is a demo of a Streamlit-based chatbot UI that interacts with a FastAPI backend, executing SAS code and math prompts using the Model Context Protocol (MCP). All SAS operations are routed through MCP tools only; no direct SAS client calls are made.
+This project is a demo of a Streamlit-based chatbot UI that interacts with a FastAPI backend, executing SAS code jobs using the Model Context Protocol (MCP). All SAS operations are routed through MCP tools only; no direct SAS client calls are made. Only valid SAS code jobs are supported—no llm/ local or non-SAS math operations.
 
 ---
 
@@ -18,7 +18,7 @@ This project is a demo of a Streamlit-based chatbot UI that interacts with a Fas
 - **Session Management**: Tables and outputs are session-scoped for reliability.
 - **Tested with MCP Inspector**: Fully validated for agent-driven workflows.
 - **Demo UI**: Uses Streamlit for the chatbot interface.
-- **LLM/Prompts**: Uses OpenAI GPT-4.1-mini for natural language math (all SAS code is routed through MCP).
+- **LLM/Prompts**: Uses OpenAI GPT-4.1-mini for prompt classification (all SAS code is routed through MCP).
 
 ---
 
@@ -43,10 +43,7 @@ This project is a demo of a Streamlit-based chatbot UI that interacts with a Fas
    streamlit run frontend/chatbot_demo.py
    ```
 5. Open [http://localhost:8501](http://localhost:8501) in your browser.
-6. Enter SAS code or math prompts in the chat UI.
-- **For multi-step SAS code:** Specify the output table name (e.g., `results2`) in the single Table Name input to fetch the correct results. Only one Table Name input is used and honored.
-- **For math prompts/simple arithmetic:** The backend auto-fetches `work.results.x` for you, but for all other code, the Table Name field determines which table is fetched.
-- The UI and backend always use the Table Name input as provided by the user.
+6. Enter valid SAS code in the chat UI. Specify the output table name (e.g., `results2`) in the single Table Name input to fetch the correct results. Only one Table Name input is used and honored. The UI and backend always use the Table Name input as provided by the user.
 7. All results are fetched via MCP tools and the MCP tool call trace is shown after each response.
 
 ---
@@ -88,13 +85,13 @@ run;
 
 ## UI Details
 
-The Streamlit frontend provides a chat interface for users to interact with the SAS MCP backend. Users can enter SAS code or math prompts, and the backend executes via MCP tools, returning results and MCP tool traces.
+The Streamlit frontend provides a chat interface for users to interact with the SAS MCP backend. Users can enter SAS code, and the backend executes via MCP tools, returning results and MCP tool traces. Only SAS code jobs are supported.
 
 ---
 
 ## Backend Logic / MCP Orchestration
 
-The FastAPI backend uses the MCP tool layer for all SAS operations. Tools like `run_code`, `get_table`, and `get_results` are invoked for every user request, and each tool logs its invocation for traceability. No SAS client calls bypass MCP.
+The FastAPI backend uses the MCP tool layer for all SAS operations. Tools like `run_code`, `get_table`, and `get_results` are invoked for every user request, and each tool logs its invocation for traceability. No SAS client calls bypass MCP. Only valid SAS code jobs are accepted; local or non-SAS operations are not supported.
 
 ---
 
@@ -141,27 +138,6 @@ python mcp_sasviya/mcp_server.py
 
 ---
 
-## ⚠️ IMPORTANT: How to Retrieve Results from SAS Jobs
-
-### Example: Multiple Outputs in One Job
-
-```sas
-data work.results1;
-  length name $16;
-  id=1; name='Alice'; salary=50000+5000; output;
-  id=2; name='Bob'; salary=.; output;
-  id=3; name='Charlie'; salary=60000*1.05; output;
-run;
-
-proc means data=work.results1 n mean std min max;
-  var salary;
-  output out=work.results2;
-run;
-```
-- Fetch `results1` for raw data, `results2` for summary stats.
-
----
-
 ## Key Features
 
 - All SAS operations are routed through MCP tools only (no direct SAS client calls).
@@ -177,7 +153,7 @@ run;
 ## Roadmap
 - **Persistent storage** (future)
 - **Advanced logging/metrics** (future)
-- **Natural language/LLM agent integration** (future)
+- **Further Natural language/LLM agent integration** (future)
 
 ---
 
@@ -185,10 +161,6 @@ run;
 MIT (or specify your license here)
 
 ---
-
-## Contributing
-Contributions and feedback are welcome!  
-Open issues or pull requests on [GitHub](https://github.com/hemdesai/SAS_MCP).
 
 ## Contributing
 Contributions and feedback are welcome!  
