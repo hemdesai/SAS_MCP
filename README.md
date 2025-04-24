@@ -13,8 +13,8 @@ This repository contains three main approaches for interacting with the SAS MCP 
 - Uses scripted rules and logic (no AI/LLM).
 - Demonstrates conversational UI without advanced natural language understanding.
 
-### 3. LLM Chatbot (`llm-chatbot`)
-- Full-featured chatbot powered by a Large Language Model (LLM).
+### 3. LLM Chatbot (`llm-chatbot`) === LATEST WORK, SO START HERE
+- Full-featured chatbot powered by a LLM, GPT-4.1 Mini
 - Supports natural language queries and advanced interactions with the SAS MCP Server.
 
 Main branch contains this overview and shared documentation. For details and code, switch to the relevant branch.
